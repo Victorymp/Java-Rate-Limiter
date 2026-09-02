@@ -5,9 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-//Token Bucket approach
-//Each user has a bucket
-
 public class BasicRateLimiter {
 
 	private int maxRequest;
@@ -22,12 +19,10 @@ public class BasicRateLimiter {
 	public boolean allowRequest(String clientId) {
 		long now = System.currentTimeMillis();
 		
-		// ClientRequest client = new ClientRequest(clientId, now);
-		
 		ClientRequest existingClient = clients.get(clientId);
 		if (existingClient == null || now - existingClient.windowStart >= windowMillis) {
 			existingClient = new ClientRequest(now, 1);
-			
+			clients.put(clientId, existingClient);
 			return true;
 		}
 		
