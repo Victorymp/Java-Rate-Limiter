@@ -1,32 +1,31 @@
 package com.ratelimiter.ratelimiter;
 
-import java.util.PriorityQueue;
-import java.util.Queue;
-
 //Token Bucket approach
-//Each user has a bucket
+//A bucket is a shared resource
 public class BucketRateLimiter {
 	
-	private int bucketSize;
 	private int refillRate;
 	private int currentBucketSize;
-	private final Queue<ClientRequest> tokens = new PriorityQueue();// this would be cache
 	
 	private int overflowSize;
+	private int overflowRefillRate;
+	
+	private long lastRefillTime;
 	
 	
 	public BucketRateLimiter(int bucketSize, int refillRate) {
-		this.bucketSize = bucketSize;
 		this.refillRate = refillRate;
 		this.currentBucketSize = bucketSize;
 		this.overflowSize = 0;
+		this.lastRefillTime = System.currentTimeMillis();
 	}
 	
-	public BucketRateLimiter(int bucketSize, int refillRate, int overflowSize) {
-		this.bucketSize = bucketSize;
+	public BucketRateLimiter(int bucketSize, int refillRate, int overflowSize, int overflowRefillRate) {
 		this.refillRate = refillRate;
 		this.currentBucketSize = bucketSize;
 		this.overflowSize = overflowSize;
+		this.lastRefillTime = System.currentTimeMillis();
+		this.overflowRefillRate = overflowRefillRate;
 	}
 	
 	public boolean allowRequest() {
@@ -34,28 +33,23 @@ public class BucketRateLimiter {
 		// Puts all request into a bucket
 		// You wouldn't run this per request 
 		long now = System.currentTimeMillis();
-		ClientRequest lastToken = tokens.remove();
+		long elapsedTime = now - lastRefillTime / 1000;
 		
-		if (now - lastToken.windowStart > 1000) {
-			for (int i = 0; i < refillRate; i++) {
-				if (currentBucketSize < bucketSize) {					
-					currentBucketSize ++; 
-				}
-				else if (currentBucketSize == bucketSize) {
-					overflowSize ++;
-				}
+		if (elapsedTime > 0) {
+			currentBucketSize = Math.min(currentBucketSize, currentBucketSize + (int)(elapsedTime * refillRate));
+			if (overflowRefillRate != 0) {
+				overflowSize = Math.min(overflowSize, overflowSize + (int)(elapsedTime * refillRate));
 			}
+			lastRefillTime = elapsedTime*1000;
 		}
 		
-		tokens.add(new ClientRequest(now,1));
-		
 		// Use available overflow first
-		if (overflowSize > 0) {
+		if (overflowSize > 0 && overflowRefillRate != 0) {
 			overflowSize --;
 			return true;
 		}
 		
-		if (currentBucketSize > 0 ) {
+		if (currentBucketSize > 0) {
 			currentBucketSize--;
 			return true;
 		}
