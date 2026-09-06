@@ -14,11 +14,11 @@ public class FixedWindowRatelimiter {
 	}
 	
 	public boolean allowRequest() {
+		// Both numbers eval as integers so java does integer division
+		// This means it doesn't include the floating point
+		long window = (System.currentTimeMillis() / 1000) / windowSize;
 		
-		long now = System.currentTimeMillis();
-		
-		long window = (now / 1000) / windowSize;
-
+		// Assigning a window Id
 		if (window != currentWindow) {
 			currentWindow = window;
 			currentRequestSize = 0;
